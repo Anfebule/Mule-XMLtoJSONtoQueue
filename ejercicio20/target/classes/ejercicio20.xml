@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+    <file:connector name="File" outputPattern="hola.xml" autoDelete="true" streaming="true" validateConnections="true" doc:name="File"/>
+    <jms:activemq-connector name="Active_MQ" specification="1.1" brokerURL="tcp://localhost:61616" validateConnections="true" doc:name="Active MQ"/>
+    <jms:activemq-connector name="Active_MQ1" specification="1.1" brokerURL="tcp://localhost:61616" validateConnections="true" doc:name="Active MQ"/>
+    <flow name="ejercicio20Flow">
+        <file:inbound-endpoint path="C:\archivos" connector-ref="File" responseTimeout="10000" doc:name="File"/>
+        <byte-array-to-string-transformer doc:name="Byte Array to String"/>
+        <json:xml-to-json-transformer doc:name="XML to JSON"/>
+        <json:json-to-object-transformer returnClass="java.util.HashMap" doc:name="JSON to Object"/>
+        <set-variable variableName="id" value="#[payload.invoice.id]" doc:name="Variable"/>
+        <set-variable variableName="customerId" value="#[payload.invoice.customerId]" doc:name="Variable"/>
+        <set-variable variableName="email" value="#[payload.invoice.email]" doc:name="Variable"/>
+        <logger message="#[flowVars.id], #[flowVars.customerId], #[flowVars.email]" level="INFO" doc:name="Logger"/>
+        <foreach collection="#[payload.invoice.items.item]" doc:name="For Each">
+            <set-variable variableName="itemId" value="#[payload.itemId]" doc:name="Variable"/>
+            <set-variable variableName="priority" value="#[payload.priority]" doc:name="Variable"/>
+            <logger message="#[flowVars.itemId], #[flowVars.priority]" level="INFO" doc:name="Logger"/>
+            <choice doc:name="Choice">
+                <when expression="#[flowVars.priority == &quot;HIGH&quot;]">
+                    <jms:outbound-endpoint queue="highPriority" connector-ref="Active_MQ" doc:name="JMS_High"/>
+                </when>
+                <when expression="#[flowVars.priority == &quot;NORMAL&quot;]">
+                    <jms:outbound-endpoint queue="normalPriority" connector-ref="Active_MQ1" doc:name="JMS_Normal"/>
+                </when>
+            </choice>
+        </foreach>
+    </flow>
+</mule>
